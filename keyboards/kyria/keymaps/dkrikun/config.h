@@ -32,10 +32,12 @@
 //#define SPLIT_USB_TIMEOUT 1000
 //#define NO_USB_STARTUP_CHECK
 #ifdef COMBO_ENABLE
-  #define COMBO_COUNT 1
+  #define COMBO_COUNT 2
 #endif
 
-#define TAPPING_TERM 200
+#define TAPPING_TERM 180
 #define TAPPING_TOGGLE 2
+#define LEADER_PER_KEY_TIMING
+#define LEADER_TIMEOUT 100
 
 #define MK_3_SPEED
