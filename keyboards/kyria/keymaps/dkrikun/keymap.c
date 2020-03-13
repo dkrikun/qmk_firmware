@@ -30,6 +30,49 @@ combo_t keycombos[COMBO_COUNT] = {
 };
 #endif
 
+enum my_keycodes {
+    KC_ACL_UP = SAFE_RANGE,
+    KC_ACL_DN
+};
+
+
+#if 0
+// cur_dance() by Daniel Gordon
+enum {
+  SINGLE_TAP = 1,
+  SINGLE_HOLD = 2,
+  DOUBLE_TAP = 3,
+  DOUBLE_HOLD = 4,
+  DOUBLE_SINGLE_TAP = 5, //send two single taps
+  TRIPLE_TAP = 6,
+  TRIPLE_HOLD = 7,
+  OTHER = 8
+};
+
+int cur_dance (qk_tap_dance_state_t *state) {
+  if (state->count == 1) {
+    //If count = 1, and it has been interrupted - it doesn't matter if it is pressed or not: Send SINGLE_TAP
+    if (state->interrupted) {
+      return SINGLE_TAP;
+    }
+    else {
+      if (!state->pressed) return SINGLE_TAP;
+      else return SINGLE_HOLD;
+    }
+  }
+  //If count = 2, and it has been interrupted - assume that user is trying to type the letter associated
+  //with single tap.
+  else if (state->count == 2) {
+    if (state->interrupted) return DOUBLE_SINGLE_TAP;
+    else if (state->pressed) return DOUBLE_HOLD;
+    else return DOUBLE_TAP;
+  }
+  else if ((state->count == 3) && ((state->interrupted) || (!state->pressed))) return TRIPLE_TAP;
+  else if (state->count == 3) return TRIPLE_HOLD;
+  else return OTHER; //magic number. At some point this method will expand to work for more presses
+}
+#endif
+
 enum tap_dances {
     TD_MINUS_UNDS = 0,
     TD_LEFT_PAR,
@@ -67,32 +110,15 @@ qk_tap_dance_action_t tap_dance_actions[] = {
 #define XX_SCLN TD(TD_SCLN)
 #define XX_EXLM TD(TD_EXCLAIM)
 #define XX_GT   TD(TD_GTLT)
+#define XX_HOME TD(TD_DHOME)
+#define XX_END  TD(TD_DEND)
 
-// TODO define combos (double shift = capslock)
-// TODO define tap dances
-// TODO define double-tap on raise/lower to osl
-// TODO impl. ACTION_TAP_DANCE_TRIPLE and use this for parentheses
-// TODO impl. cyclic tap-dance with backspace in between
+// TODO define double-tap on raise/lower to osl or win+layer
 // TODO experiment with double-tap and hold
-// TODO define leader sequences
-// ,cc == ctrl-c
-// ,cv == ctrl-v
-// ,cx == ctrl-x
-// ,cw == ctrl-w
-// ,ct == ctrl-t
-// ,cad == ctrl+alt+del
-// ,af == alt+f4
-// ,sce == shift+ctrl+esc
 // TODO define oled behaviours
-// TODO define hands
-// TODO define boot magics (?)
 // TODO define backlight
-// TODO map double home to ctrl-home
-// TODO map double end to ctrl-end
 // TODO map home-end combo
 // TODO create windows/linux specific keymaps
-// TODO make sure there are mods on all layers
-// TODO consider mapping double ; to ::
 // TODO think how to facilitate:
 //  alt-tab, shift-alt-tab
 //  <mod>-<number>
@@ -108,12 +134,8 @@ enum layers {
 
 #define XX_LSPC  LSFT_T(KC_SPC)
 #define XX_RSPC  RSFT_T(KC_SPC)
-
-// mod and layer taps
-// mouse layer
 #define XX_G   LT(_MOUSE, KC_G)
 #define XX_F   LT(_NAV, KC_F)
-
 #define XX_D    LGUI_T(KC_D)
 #define XX_C    LCTL_T(KC_C)
 #define XX_V    LALT_T(KC_V)
@@ -122,16 +144,21 @@ enum layers {
 #define XX_M    RALT_T(KC_M)
 #define XX_COMM RCTL_T(KC_COMM)
 #define XX_K    RGUI_T(KC_K)
-
 #define XX_F12  LGUI_T(KC_F12)
 #define XX_F8   LGUI_T(KC_F8)
 #define XX_PSCR LCTL_T(KC_PSCR)
 #define XX_SLCK LALT_T(KC_SLCK)
-#define YY_MINS RALT_T(KC_MINS)
+#define YY_MINS LGUI_T(KC_MINS)
 #define XX_PLUS RCTL_T(KC_PLUS)
 #define XX_ASTR RGUI_T(KC_ASTR)
 #define XX_8    RGUI_T(KC_8)
+#define XX_RAI MO(_RAISE)
+#define XX_LOW MO(_LOWER)
+#define YY_QUOT RGUI_T(KC_QUOT)
+#define YY_EXLM LGUI_T(KC_EXLM)
 
+
+uint8_t macl = 0;
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
@@ -143,47 +170,47 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  * |--------+------+------+------+------+------|                              |------+------+------+------+------+--------|
  * | Tab    |   A  |   S  | ^ D  |   F* |   G* |                              |   H  |   J  | ^ K  |   L  | ;  : | PgDn   |
  * |--------+------+------+------+------+------+-------------.  ,-------------+------+------+------+------+------+--------|
- * | Menu   |   Z  |   X  | ^ C  | ^ V  |   B  |      | Esc  |  | Lead |      |   N  | ^ M  | ^ ,< | ^ .> | /  ? | Del    |
+ * | Ctrl   |   Z  |   X  | ^ C  | ^ V  |   B  |      | Esc  |  | Lead |      |   N  | ^ M  | ^ ,< |  .>  | /  ? | Del    |
  * `----------------------+------+------+------|      |------|  |------|      |------+------+------+----------------------'
- *                        | Home | Raise| Lower| Space| Enter|  | Bspc | Space| Raise| Lower| End  |
+ *                        | Home | Raise| Lower| Space| Enter|  | Bspc | Space| Lower| Raise| End  |
  *                        |      |      |      | Shift|      |  |      | Shift|      |      |      |
  *                        `----------------------------------'  `----------------------------------'
  */
     [_QWERTY] = LAYOUT(
-      KC_TAB,  KC_Q,  KC_W,  KC_E,  KC_R,  KC_T,                                           KC_Y,   KC_U,   KC_I,    KC_O,    KC_P,     KC_PGUP,
-      KC_ESC,  KC_A,  KC_S,  XX_D,  XX_F,  XX_G,                                           KC_H,   KC_J,   XX_K,    KC_L,    KC_SCLN,  KC_PGDN,
-      KC_APP,  KC_Z,  KC_X,  XX_C,  XX_V,  KC_B,       XXXXXXX, KC_ESC,  KC_LEAD, XXXXXXX, KC_N,   XX_M,   XX_COMM, KC_DOT,  XX_SLSH,  KC_DEL,
-                      KC_HOME, MO(_RAISE), MO(_LOWER), XX_LSPC, KC_ENT,  KC_BSPC, XX_RSPC, MO(_RAISE), MO(_LOWER), KC_END
+      KC_ESC,  KC_Q,  KC_W,   KC_E,    KC_R,   KC_T,                                       KC_Y,   KC_U,   KC_I,    KC_O,    KC_P,     KC_PGUP,
+      KC_TAB,  KC_A,  KC_S,   XX_D,    XX_F,   XX_G,                                       KC_H,   KC_J,   XX_K,    KC_L,    KC_SCLN,  KC_PGDN,
+      KC_LCTL, KC_Z,  KC_X,   XX_C,    XX_V,   KC_B,   XXXXXXX, KC_ESC,  KC_LEAD, XXXXXXX, KC_N,   XX_M,   XX_COMM, KC_DOT,  XX_SLSH,  KC_DEL,
+                              XX_HOME, XX_RAI, XX_LOW, XX_LSPC, KC_ENT,  KC_BSPC, XX_RSPC, XX_LOW, XX_RAI, XX_END
     ),
 /*
  * Lower Layer: Symbols
  *
  * ,-------------------------------------------.                              ,-------------------------------------------.
- * |        |      |      |  ~   |   #  |  %   |                              |  =   |  +   |  "'  |      |      |        |
+ * |        |      |      |  ~   |   #  |  %   |                              |  =   |  +   |  "   |      |      |        |
  * |--------+------+------+------+------+------|                              |------+------+------+------+------+--------|
- * |        |      |  ,.  | Gui  |   *  |  _-  |                              |  \/  |  |   |  Gui |  ;:  |      |        |
+ * |        |      |  _   |  ^-  |   *  |  \   |                              |  /   |  |   |  ^'  | !    |      |        |
  * |--------+------+------+------+------+------+-------------.  ,-------------+------+------+------+------+------+--------|
- * |        |      |  ?!  | Ctrl | Alt  |  ^   |      |      |  |      |      |  &   | Alt  | Ctrl | > <  |      |        |
+ * |        |      |      | Ctrl | Alt  |  ^   |      |  [   |  |   ]  |      |  &   | Alt  | Ctrl |      |      |        |
  * `----------------------+------+------+------| (    |------|  |------|    ) |------+------+------+----------------------'
- *                        |      |      |      |      | {[   |  |   ]} |      |      |      |      |
+ *                        |      |      |      |      |  {   |  |   }  |      |      |      |      |
  *                        |      |      |      |      |      |  |      |      |      |      |      |
  *                        `----------------------------------'  `----------------------------------'
  */
     [_LOWER] = LAYOUT(
-      _______, _______, _______, KC_TILD, KC_HASH, KC_PERC,                                     KC_EQL,  KC_PLUS, XX_QUOT, _______, _______, _______,
-      _______, _______, XX_DOT,  KC_LGUI, KC_ASTR, XX_MINS,                                     XX_SLSH, KC_PIPE, KC_RGUI, XX_SCLN, _______, _______,
-      _______, _______, XX_EXLM, KC_LCTL, KC_LALT, KC_CIRC, XXXXXXX, _______, _______, XXXXXXX, KC_AMPR, KC_RALT, KC_RCTL, XX_GT,   _______, _______,
-                                 _______, _______, _______, KC_LPRN, XX_LPAR, XX_RPAR, KC_RPRN, _______, _______, _______
+      _______, _______, _______, KC_TILD, KC_HASH, KC_PERC,                                     KC_EQL,  KC_PLUS, KC_DQUO, _______, _______, _______,
+      _______, _______, KC_UNDS, YY_MINS, KC_ASTR, KC_BSLS,                                     KC_SLSH, KC_PIPE, YY_QUOT, KC_EXLM, _______, _______,
+      _______, _______, _______, KC_LCTL, KC_LALT, KC_CIRC, XXXXXXX, KC_LBRC, KC_RBRC, XXXXXXX, KC_AMPR, KC_RALT, KC_RCTL, _______, _______, _______,
+                                 _______, _______, _______, KC_LPRN, KC_LCBR, KC_RCBR, KC_RPRN, _______, _______, _______
     ),
 /*
  * Raise Layer: Number keys, function keys, misc. keys, media, arithmetic symbols
  *
  * ,-------------------------------------------.                              ,-------------------------------------------.
- * |        | F1   | F2   | F3   | F4   | F5   |                              |  1   |  2   |  3   |  4   |  5   |   .    |
+ * |        | F1   | F2   | F3   | F4   | F5   |                              |  1   |  2   |  3   |  4   |  5   |        |
  * |--------+------+------+------+------+------|                              |------+------+------+------+------+--------|
- * |        | F6   | F7   | ^F8  | F9   | F10  |                              |  6   |  7   |  8   |  9   |  =   |   (    |
+ * |        | F6   | F7   | ^F8  | F9   | F10  |                              |  6   |  7   |  ^8  |  9   |      |        |
  * |--------+------+------+------+------+------+-------------.  ,-------------+------+------+------+------+------+--------|
- * |        | F11  | F12  |^PrSc |^ScLk |Insert|      |      |  |      |      |  0   | ^-   | ^+   | ^*   |  /   |   )    |
+ * |        | F11  | F12  |^PrSc |^ScLk |Insert|      |      |  |      |      |  0   | Alt  | Ctrl |      |      |        |
  * `----------------------+------+------+------|      |------|  |------|      |------+------+------+----------------------'
  *                        |      |      |      |      |      |  |      |      |      |      |      |
  *                        |      |      |      |      |      |  |      |      |      |      |      |
@@ -191,8 +218,8 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  */
     [_RAISE] = LAYOUT(
       _______, KC_F1,   KC_F2,   KC_F3,   KC_F4,   KC_F5,                                       KC_1,    KC_2,    KC_3,    KC_4,    KC_5,    _______,
-      _______, KC_F6,   KC_F7,   XX_F8,   KC_F9,   KC_F10,                                      KC_6,    KC_7,    XX_8,    KC_9,    KC_EQL,  KC_LPRN,
-      _______, KC_F11,  KC_F12,  XX_PSCR, XX_SLCK, KC_INS,  XXXXXXX, KC_PGUP, KC_HOME, XXXXXXX, KC_0,    YY_MINS, XX_PLUS, KC_ASTR, KC_SLSH, KC_RPRN,
+      _______, KC_F6,   KC_F7,   XX_F8,   KC_F9,   KC_F10,                                      KC_6,    KC_7,    XX_8,    KC_9,    _______, _______,
+      _______, KC_F11,  KC_F12,  XX_PSCR, XX_SLCK, KC_INS,  XXXXXXX, KC_PGUP, KC_HOME, XXXXXXX, KC_0,    KC_RALT, KC_RCTL, _______, _______, _______,
                                  _______, _______, _______, _______, KC_PGDN, KC_END,  _______, _______, _______, _______
     ),
 /*
@@ -223,17 +250,17 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  * |--------+------+------+------+------+------|                              |------+------+------+------+------+--------|
  * |        |      |      |      |      |      |                              |      |      | Up   |      |      |        |
  * |--------+------+------+------+------+------+-------------.  ,-------------+------+------+------+------+------+--------|
- * |        |      |      |      |      |      |      | WLeft|  | Wup  |      |      | Left | Down | Right|      |        |
+ * |        |      |      |      |      |      |      | AclUp|  | Wup  |      |      | Left | Down | Right|      |        |
  * `----------------------+------+------+------| BTN1 |------|  |------| BTN2 |------+------+------+----------------------'
- *                        |      |      |      |      |WRight|  | Wdn  |      | BTN3 |      |      |
+ *                        |      |      |      |      | AclDn|  | Wdn  |      | BTN3 |      |      |
  *                        |      |      |      |      |      |  |      |      |      |      |      |
  *                        `----------------------------------'  `----------------------------------'
  */
     [_MOUSE] = LAYOUT(
       XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                                     XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,
-      XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                                     XXXXXXX, XXXXXXX, KC_MS_U, XXXXXXX, XXXXXXX, XXXXXXX,
-      XXXXXXX, XXXXXXX, KC_LGUI, KC_LCTL, KC_LALT, XXXXXXX, XXXXXXX, KC_WH_L, KC_WH_U, XXXXXXX, XXXXXXX, KC_MS_L, KC_MS_D, KC_MS_R, XXXXXXX, XXXXXXX,
-                                 XXXXXXX, XXXXXXX, XXXXXXX, KC_BTN1, KC_WH_R, KC_WH_D, KC_BTN2, KC_BTN3, XXXXXXX, XXXXXXX
+      XXXXXXX, XXXXXXX, XXXXXXX, KC_LGUI, XXXXXXX, XXXXXXX,                                     XXXXXXX, XXXXXXX, KC_MS_U,   XXXXXXX, XXXXXXX, XXXXXXX,
+      XXXXXXX, XXXXXXX, XXXXXXX, KC_LCTL, KC_LALT, XXXXXXX, XXXXXXX, KC_ACL_UP, KC_WH_U, XXXXXXX, XXXXXXX, KC_MS_L, KC_MS_D, KC_MS_R, XXXXXXX, XXXXXXX,
+                                 XXXXXXX, XXXXXXX, XXXXXXX, KC_BTN1, KC_ACL_DN, KC_WH_D, KC_BTN2, KC_BTN3, XXXXXXX, XXXXXXX
     ),
 /*
  * Adjust Layer: RGB, configuration, media
@@ -241,27 +268,24 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  * ,-------------------------------------------.                              ,-------------------------------------------.
  * |        |      |      |      |      |      |                              |      |      |      |      |      |        |
  * |--------+------+------+------+------+------|                              |------+------+------+------+------+--------|
- * |        | TOG  | SAI  | HUI  | VAI  | MOD  |                              |      |      |      |      |      |        |
+ * |        |      |      |      | VAI  | TOG  |                              |      |      |      |      |      |        |
  * |--------+------+------+------+------+------+-------------.  ,-------------+------+------+------+------+------+--------|
- * |        |      | SAD  | HUD  | VAD  | RMOD |      |      |  |      |      |      |      |      |      |      |        |
- * `----------------------+------+------+------+------+------|  |------+------+------+------+------+----------------------'
+ * |        |      |      |      | VAD  |      |      |      |  |      |      |      |      |      |      |      |        |
+ * `----------------------+------+------+------|      |------|  |------|      |------+------+------+----------------------'
  *                        |      |      |      |      |      |  |      |      |      |      |      |
  *                        |      |      |      |      |      |  |      |      |      |      |      |
  *                        `----------------------------------'  `----------------------------------'
  */
     [_ADJUST] = LAYOUT(
       _______, _______, _______, _______, _______, _______,                                     _______, _______, _______, _______, _______,  _______,
-      _______, RGB_TOG, RGB_SAI, RGB_HUI, RGB_VAI, RGB_MOD,                                     _______, _______, _______, _______, _______,  _______,
-      _______, _______, RGB_SAD, RGB_HUD, RGB_VAD, RGB_RMOD,_______, _______, _______, _______, _______, _______, _______, _______, _______, _______,
+      _______, _______, _______, _______, RGB_VAI, RGB_TOG,                                     _______, _______, _______, _______, _______,  _______,
+      _______, _______, _______, _______, RGB_VAD, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,
                                  _______, _______, _______, _______, _______, _______, _______, _______, _______, _______
     ),
 };
 
 layer_state_t layer_state_set_user(layer_state_t state) {
     switch(biton(state)) {
-        case _ADJUST:
-            rgblight_sethsv_noeeprom_pink();
-            break;
         case _LOWER:
             rgblight_sethsv_noeeprom_teal();
             break;
@@ -282,7 +306,7 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 }
 
 void keyboard_post_init_user(void) {
-    rgblight_enable_noeeprom();
+    rgblight_mode_noeeprom(RGBLIGHT_MODE_STATIC_LIGHT);
     rgblight_sethsv_noeeprom_white();
 }
 
@@ -305,6 +329,7 @@ static void render_kyria_logo(void) {
     oled_write_raw_P(kyria_logo, sizeof(kyria_logo));
 }
 
+#if 0
 static void render_qmk_logo(void) {
   static const char PROGMEM qmk_logo[] = {
     0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8a,0x8b,0x8c,0x8d,0x8e,0x8f,0x90,0x91,0x92,0x93,0x94,
@@ -313,52 +338,80 @@ static void render_qmk_logo(void) {
 
   oled_write_P(qmk_logo, false);
 }
+#endif
 
 static void render_status(void) {
-    // QMK Logo and version information
-    render_qmk_logo();
-    oled_write_P(PSTR("Kyria rev1.0\n\n"), false);
-
-    // Host Keyboard Layer Status
     oled_write_P(PSTR("Layer: "), false);
     switch (get_highest_layer(layer_state)) {
         case _QWERTY:
-            oled_write_P(PSTR("Default\n"), false);
+            oled_write_P(PSTR("QWE\n"), false);
             break;
         case _LOWER:
-            oled_write_P(PSTR("Lower\n"), false);
+            oled_write_P(PSTR("SYM\n"), false);
             break;
         case _RAISE:
-            oled_write_P(PSTR("Raise\n"), false);
+            oled_write_P(PSTR("NUM\n"), false);
             break;
         case _NAV:
-            oled_write_P(PSTR("Nav\n"), false);
+            oled_write_P(PSTR("NAV\n"), false);
             break;
         case _MOUSE:
-            oled_write_P(PSTR("Mouse\n"), false);
+            oled_write_P(PSTR("MOU\n"), false);
             break;
         case _ADJUST:
-            oled_write_P(PSTR("Adjust\n"), false);
+            oled_write_P(PSTR("ADJ\n"), false);
             break;
         default:
-            oled_write_P(PSTR("Undefined\n"), false);
+            oled_write_P(PSTR("UND\n"), false);
     }
 
+#if 0
     // Host Keyboard LED Status
     uint8_t led_usb_state = host_keyboard_leds();
     oled_write_P(IS_LED_ON(led_usb_state, USB_LED_NUM_LOCK) ? PSTR("NUMLCK ") : PSTR("       "), false);
     oled_write_P(IS_LED_ON(led_usb_state, USB_LED_CAPS_LOCK) ? PSTR("CAPLCK ") : PSTR("       "), false);
     oled_write_P(IS_LED_ON(led_usb_state, USB_LED_SCROLL_LOCK) ? PSTR("SCRLCK ") : PSTR("       "), false);
+#endif
+
+    oled_write_P(macl == 0? PSTR("M0\n") :
+                 macl == 1? PSTR("M1\n") :
+                            PSTR("M2\n"), false);
 }
 
 void oled_task_user(void) {
     if (is_keyboard_master()) {
-        render_status(); // Renders the current keyboard state (layer, lock, caps, scroll, etc)
+        render_status();
     } else {
         render_kyria_logo();
     }
 }
 #endif
+
+bool process_record_user(uint16_t keycode, keyrecord_t* record) {
+    switch(keycode) {
+        case KC_ACL_UP:
+            if (record->event.pressed) {
+                switch(macl) {
+                    case 2: break;
+                    case 0: macl = 1; tap_code(KC_ACL1); break;
+                    case 1: macl = 2; tap_code(KC_ACL2); break;
+                }
+            }
+
+            return false;
+        case KC_ACL_DN:
+            if (record->event.pressed) {
+                switch(macl) {
+                    case 0: break;
+                    case 2: macl = 1; tap_code(KC_ACL1); break;
+                    case 1: macl = 0; tap_code(KC_ACL0); break;
+                }
+            }
+            return false;
+    }
+
+    return true;
+}
 
 LEADER_EXTERNS();
 
