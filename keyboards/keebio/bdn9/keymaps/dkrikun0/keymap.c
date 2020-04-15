@@ -2,27 +2,24 @@
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [0] = LAYOUT(
-        LGUI(KC_Q), KC_F7, TG(1),
-        KC_F4, KC_F5, KC_F6,
-        KC_F1, KC_F2, KC_F3
+        G(KC_Q),     G(C(KC_SPACE)), TG(1),
+        G(KC_ENTER), G(KC_K),        G(KC_C),
+        G(KC_H),     G(KC_J),        G(KC_L)
     ),
     [1] = LAYOUT(
-        _______, KC_F14, _______,
-        KC_F11, KC_F12, KC_F13,
-        KC_F8, KC_F9, KC_F10
+        _______,    G(KC_F),    _______,
+        G(KC_TAB),  G(S(KC_K)), G(KC_I),
+        G(S(KC_H)), G(S(KC_J)), G(S(KC_L))
     )
 };
 
 int layer=0;
 
 void encoder_update_user(uint8_t index, bool clockwise) {
-    if (index == 0) {
-        if (clockwise) {
-            tap_code16(LGUI(KC_COMMA));
-        } else {
-            tap_code16(LGUI(KC_DOT));
-        }
-    }
+    if(layer == 0)
+        tap_code16(G(clockwise? KC_COMMA : KC_DOT));
+    else
+        tap_code16(G(S(clockwise? KC_COMMA : KC_DOT)));
 }
 
 layer_state_t layer_state_set_user(layer_state_t state) {
