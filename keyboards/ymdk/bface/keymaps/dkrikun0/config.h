@@ -1,0 +1,9 @@
+#pragma once
+
+#define GRAVE_ESC_GUI_OVERRIDE
+#define TAPPING_TOGGLE 2
+#define PERMISSIVE_HOLD
+
+#define SWITCH_BSPC_BSLS
+#define SWITCH_GUI_ALT
+#define SWITCH_CAPS_CTRL
