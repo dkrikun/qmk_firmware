@@ -17,7 +17,7 @@ int layer=0;
 
 void encoder_update_user(uint8_t index, bool clockwise) {
     if(layer == 0)
-        tap_code16(G(clockwise? KC_COMMA : KC_DOT));
+        tap_code16(G(clockwise? KC_RIGHT : KC_LEFT));
     else
         tap_code16(G(S(clockwise? KC_COMMA : KC_DOT)));
 }
